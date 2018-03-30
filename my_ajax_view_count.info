@@ -1,0 +1,5 @@
+name = Custom: AJAX view count
+description = AJAXify view counters, so they are always fresh
+package = Custom
+core = 7.x
+version = "7.x-dev"

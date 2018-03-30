@@ -1,0 +1,107 @@
+<?php 
+
+/**
+ * Implements hook_menu()
+ */
+function my_ajax_view_count_menu() {
+  $items = array();
+
+  $items['my_ajax_view_count/get'] = array(
+    'title' => 'Ajax view count retrieve',
+    'page callback' => 'my_ajax_view_count_node_ajax_callback',
+    'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK,
+  );
+
+  return $items;
+}
+
+function my_ajax_view_count_node_ajax_callback() {
+  // TODO
+}
+
+/**
+ * Implements hook_js_info()
+ */
+function my_ajax_view_count_js_info() {
+  $callbacks = array();
+
+  $callbacks['view_count'] = array(
+    'callback function' => 'my_ajax_view_count_node_view_count',
+    'skip init' => TRUE,
+    'token' => FALSE,
+  );
+
+  return $callbacks;
+}
+
+/**
+ * Ajax callback. Retrieves node view counts, without cache impact.
+ *
+ * @param      array  $nids   Node ids
+ *
+ * @return     array  ( associative array, nid => view_count )
+ */
+function my_ajax_view_count_node_view_count($nids = array()) {
+  $json = array();
+
+  if (empty($nids)) {
+    return $json;
+  }
+
+  $query = db_select('node_counter', 'nc');
+  $query->fields('nc', array('nid', 'totalcount'));
+  $query->condition('nc.nid', $nids, 'IN');
+  $result = $query->execute()->fetchAllKeyed();
+
+  $json['content'] = $result;
+
+  return $json;
+}
+
+/**
+ * Implements hook_ds_field_info().
+ */
+function my_ajax_view_count_ds_fields_info($entity_type) {
+  $fields = array();
+
+  if ($entity_type == 'node') {
+
+    $fields['my_ajax_view_count'] = array(
+      'title' => t('Ajax view count'),
+      'field_type' => DS_FIELD_TYPE_FUNCTION,
+      'function' => 'my_ajax_view_count_format_ds_ajax_view_count_field',
+    );
+
+    return array($entity_type => $fields);
+  }
+
+  return;
+}
+
+/**
+ * Formatter for ajax field. Corresponding js field fills actual data
+ * Also adds nid to global js settings array, so their view count can be
+ * retrieved via ajax call.
+ *
+ * @return     string  ( HTML for the field )
+ */
+function my_ajax_view_count_format_ds_ajax_view_count_field($field) {
+  $nid = $field['entity']->nid;
+
+  $value = array();
+
+  $value['#markup'] = '<span class="ajax-view-count gray-view-count" data-nid="' . $nid . '"></span>';
+
+  $value['#attached']['js'][] = array(
+    'data' => drupal_get_path('module', 'my_ajax_view_count') . '/my_ajax_view_count.js',
+    'type' => 'file',
+  );
+
+  $value['#attached']['js'][] = array(
+    'data' => array('page_nids' => array($nid => $nid)),
+    'type' => 'setting',
+  );
+
+  return drupal_render($value);
+}
